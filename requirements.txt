@@ -1,0 +1,33 @@
+# Core dependencies
+pandas>=1.3.0
+numpy>=1.21.0
+
+# Visualization
+matplotlib>=3.4.0
+seaborn>=0.11.0
+plotly>=5.0.0
+
+# Statistical analysis
+scipy>=1.7.0
+statsmodels>=0.13.0
+
+# Machine learning (for outlier detection)
+scikit-learn>=0.24.0
+
+# Data loading
+openpyxl>=3.0.0  # For Excel files
+pyarrow>=5.0.0   # For Parquet files
+chardet>=5.0.0   # For encoding detection
+tables>=3.6.0    # For HDF5 support
+
+# Report generation
+jinja2>=3.0.0    # For HTML templates
+markdown>=3.3.0  # For markdown support
+tabulate>=0.8.0  # For DataFrame markdown formatting
+
+# Development dependencies (optional)
+pytest>=7.0.0
+pytest-cov>=3.0.0
+black>=22.0.0
+flake8>=4.0.0
+mypy>=0.950
