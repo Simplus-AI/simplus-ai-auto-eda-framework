@@ -25,6 +25,9 @@ jinja2>=3.0.0    # For HTML templates
 markdown>=3.3.0  # For markdown support
 tabulate>=0.8.0  # For DataFrame markdown formatting
 
+# CLI
+click>=8.0.0     # For command-line interface
+
 # Development dependencies (optional)
 pytest>=7.0.0
 pytest-cov>=3.0.0
