@@ -4,14 +4,29 @@ Correlation and relationship analysis module.
 
 import pandas as pd
 import numpy as np
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from scipy import stats
+from ..utils.parallel import ParallelProcessor
 
 
 class CorrelationAnalyzer:
     """
     Analyze correlations and relationships between features.
+
+    Supports parallel processing for faster correlation computation.
     """
+
+    def __init__(self, n_jobs: int = 1, verbose: bool = False):
+        """
+        Initialize CorrelationAnalyzer.
+
+        Args:
+            n_jobs: Number of parallel jobs (-1 for all CPUs, default 1)
+            verbose: Enable verbose output (default False)
+        """
+        self.n_jobs = n_jobs
+        self.verbose = verbose
+        self.parallel_processor = ParallelProcessor(n_jobs=n_jobs, verbose=verbose)
 
     def analyze(self, data: pd.DataFrame, threshold: float = 0.7) -> Dict[str, Any]:
         """
@@ -96,7 +111,7 @@ class CorrelationAnalyzer:
         self, data: pd.DataFrame, threshold: float
     ) -> Dict[str, Any]:
         """
-        Find strongly correlated feature pairs.
+        Find strongly correlated feature pairs using parallel processing.
 
         Args:
             data: Input DataFrame
@@ -124,12 +139,12 @@ class CorrelationAnalyzer:
                 "message": "Not enough columns with variance for correlation analysis"
             }
 
-        # Calculate Pearson correlation
+        # Calculate Pearson correlation matrix (vectorized, already fast)
         corr_matrix = numeric_data.corr(method='pearson')
 
-        # Find strong correlations
-        strong_pairs = []
+        # Find pairs exceeding threshold
         columns = corr_matrix.columns
+        candidate_pairs = []
 
         for i in range(len(columns)):
             for j in range(i + 1, len(columns)):
@@ -137,24 +152,56 @@ class CorrelationAnalyzer:
                 corr_value = corr_matrix.loc[col1, col2]
 
                 if not np.isnan(corr_value) and abs(corr_value) >= threshold:
-                    # Calculate p-value for statistical significance
-                    try:
-                        _, p_value = stats.pearsonr(
-                            numeric_data[col1].dropna(),
-                            numeric_data[col2].dropna()
-                        )
-                    except:
-                        p_value = None
+                    candidate_pairs.append((col1, col2, corr_value))
 
-                    strong_pairs.append({
-                        "feature1": col1,
-                        "feature2": col2,
-                        "correlation": float(corr_value),
-                        "abs_correlation": float(abs(corr_value)),
-                        "p_value": float(p_value) if p_value is not None else None,
-                        "relationship": "positive" if corr_value > 0 else "negative",
-                        "strength": self._classify_correlation_strength(abs(corr_value))
-                    })
+        if not candidate_pairs:
+            return {
+                "pairs": [],
+                "count": 0,
+                "threshold": threshold,
+                "message": f"No correlations found above threshold {threshold}"
+            }
+
+        # Calculate p-values in parallel for strong correlations
+        if self.parallel_processor.is_parallel() and len(candidate_pairs) > 5:
+            # Use parallel processing for p-value calculation
+            pair_results = self.parallel_processor.process_pairwise_parallel(
+                data=numeric_data,
+                func=self._compute_correlation_with_pvalue,
+                columns=list(columns),
+                include_self=False,
+                threshold=threshold,
+                corr_matrix=corr_matrix
+            )
+
+            # Filter and format results
+            strong_pairs = []
+            for (col1, col2), result in pair_results.items():
+                if result and not result.get("error"):
+                    if result["abs_correlation"] >= threshold:
+                        strong_pairs.append(result)
+        else:
+            # Sequential processing for small datasets
+            strong_pairs = []
+            for col1, col2, corr_value in candidate_pairs:
+                # Calculate p-value for statistical significance
+                try:
+                    _, p_value = stats.pearsonr(
+                        numeric_data[col1].dropna(),
+                        numeric_data[col2].dropna()
+                    )
+                except:
+                    p_value = None
+
+                strong_pairs.append({
+                    "feature1": col1,
+                    "feature2": col2,
+                    "correlation": float(corr_value),
+                    "abs_correlation": float(abs(corr_value)),
+                    "p_value": float(p_value) if p_value is not None else None,
+                    "relationship": "positive" if corr_value > 0 else "negative",
+                    "strength": self._classify_correlation_strength(abs(corr_value))
+                })
 
         # Sort by absolute correlation value
         strong_pairs.sort(key=lambda x: x["abs_correlation"], reverse=True)
@@ -162,8 +209,59 @@ class CorrelationAnalyzer:
         return {
             "pairs": strong_pairs,
             "count": len(strong_pairs),
-            "threshold": threshold
+            "threshold": threshold,
+            "parallel_processing": self.parallel_processor.is_parallel()
         }
+
+    def _compute_correlation_with_pvalue(
+        self,
+        col1_data: pd.Series,
+        col2_data: pd.Series,
+        col1_name: str,
+        col2_name: str,
+        threshold: float = 0.0,
+        corr_matrix: pd.DataFrame = None
+    ) -> Dict[str, Any]:
+        """
+        Compute correlation and p-value for a pair of columns (parallelizable).
+
+        Args:
+            col1_data: First column data
+            col2_data: Second column data
+            col1_name: First column name
+            col2_name: Second column name
+            threshold: Correlation threshold
+            corr_matrix: Pre-computed correlation matrix (optional)
+
+        Returns:
+            Dictionary with correlation details
+        """
+        try:
+            # Get correlation value from matrix if provided
+            if corr_matrix is not None and col1_name in corr_matrix.index and col2_name in corr_matrix.columns:
+                corr_value = corr_matrix.loc[col1_name, col2_name]
+            else:
+                # Calculate correlation
+                corr_value, _ = stats.pearsonr(col1_data.dropna(), col2_data.dropna())
+
+            # Check threshold
+            if abs(corr_value) < threshold:
+                return None
+
+            # Calculate p-value
+            _, p_value = stats.pearsonr(col1_data.dropna(), col2_data.dropna())
+
+            return {
+                "feature1": col1_name,
+                "feature2": col2_name,
+                "correlation": float(corr_value),
+                "abs_correlation": float(abs(corr_value)),
+                "p_value": float(p_value),
+                "relationship": "positive" if corr_value > 0 else "negative",
+                "strength": self._classify_correlation_strength(abs(corr_value))
+            }
+        except Exception as e:
+            return {"error": str(e), "pair": (col1_name, col2_name)}
 
     def _detect_multicollinearity(self, data: pd.DataFrame) -> Dict[str, Any]:
         """
