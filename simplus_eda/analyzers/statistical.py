@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Any, List, Optional
 from scipy import stats
+from ..utils.parallel import ParallelProcessor
 
 
 class StatisticalAnalyzer:
@@ -18,20 +19,28 @@ class StatisticalAnalyzer:
     - Normality testing (Shapiro-Wilk, Anderson-Darling, Kolmogorov-Smirnov)
     - Percentile analysis
     - Categorical statistics
+    - Parallel processing support for large datasets
     """
 
     def __init__(self,
                  confidence_level: float = 0.95,
-                 normality_alpha: float = 0.05):
+                 normality_alpha: float = 0.05,
+                 n_jobs: int = 1,
+                 verbose: bool = False):
         """
         Initialize StatisticalAnalyzer.
 
         Args:
             confidence_level: Confidence level for intervals (default 0.95)
             normality_alpha: Significance level for normality tests (default 0.05)
+            n_jobs: Number of parallel jobs (-1 for all CPUs, default 1)
+            verbose: Enable verbose output (default False)
         """
         self.confidence_level = confidence_level
         self.normality_alpha = normality_alpha
+        self.n_jobs = n_jobs
+        self.verbose = verbose
+        self.parallel_processor = ParallelProcessor(n_jobs=n_jobs, verbose=verbose)
 
     def analyze(self, data: pd.DataFrame) -> Dict[str, Any]:
         """
@@ -76,95 +85,114 @@ class StatisticalAnalyzer:
                 "message": "No numeric columns found"
             }
 
-        stats_by_column = {}
-
-        for col in numeric_data.columns:
-            col_data = numeric_data[col].dropna()
-
-            if len(col_data) == 0:
-                stats_by_column[col] = {
-                    "message": "All values are missing"
-                }
-                continue
-
-            # Central tendency
-            mean_val = float(col_data.mean())
-            median_val = float(col_data.median())
-            mode_result = col_data.mode()
-            mode_val = float(mode_result.iloc[0]) if len(mode_result) > 0 else None
-
-            # Dispersion
-            std_val = float(col_data.std())
-            var_val = float(col_data.var())
-            range_val = float(col_data.max() - col_data.min())
-            iqr_val = float(col_data.quantile(0.75) - col_data.quantile(0.25))
-            mad_val = float(np.median(np.abs(col_data - col_data.median())))
-
-            # Percentiles
-            percentiles = {
-                "min": float(col_data.min()),
-                "p5": float(col_data.quantile(0.05)),
-                "p10": float(col_data.quantile(0.10)),
-                "Q1": float(col_data.quantile(0.25)),
-                "median": median_val,
-                "Q3": float(col_data.quantile(0.75)),
-                "p90": float(col_data.quantile(0.90)),
-                "p95": float(col_data.quantile(0.95)),
-                "max": float(col_data.max())
-            }
-
-            # Shape
-            skewness = float(col_data.skew())
-            kurtosis = float(col_data.kurtosis())
-
-            # Coefficient of variation (CV)
-            cv = (std_val / mean_val * 100) if mean_val != 0 else np.inf
-
-            # Confidence interval for mean
-            if len(col_data) > 1:
-                ci = stats.t.interval(
-                    self.confidence_level,
-                    len(col_data) - 1,
-                    loc=mean_val,
-                    scale=stats.sem(col_data)
-                )
-                confidence_interval = {
-                    "lower": float(ci[0]),
-                    "upper": float(ci[1]),
-                    "level": self.confidence_level
-                }
-            else:
-                confidence_interval = None
-
-            stats_by_column[col] = {
-                "count": len(col_data),
-                "missing": int(numeric_data[col].isna().sum()),
-                "central_tendency": {
-                    "mean": mean_val,
-                    "median": median_val,
-                    "mode": mode_val
-                },
-                "dispersion": {
-                    "std": std_val,
-                    "variance": var_val,
-                    "range": range_val,
-                    "iqr": iqr_val,
-                    "mad": mad_val,
-                    "cv": float(cv) if not np.isinf(cv) else None
-                },
-                "percentiles": percentiles,
-                "shape": {
-                    "skewness": skewness,
-                    "kurtosis": kurtosis,
-                    "skewness_interpretation": self._interpret_skewness(skewness),
-                    "kurtosis_interpretation": self._interpret_kurtosis(kurtosis)
-                },
-                "confidence_interval_mean": confidence_interval
-            }
+        # Use parallel processing for column statistics
+        stats_by_column = self.parallel_processor.process_numeric_columns_parallel(
+            data=data,
+            func=self._compute_column_stats,
+            confidence_level=self.confidence_level
+        )
 
         return {
             "numeric_columns": stats_by_column,
-            "total_numeric_columns": len(stats_by_column)
+            "n_columns": len(stats_by_column),
+            "parallel_processing": self.parallel_processor.is_parallel()
+        }
+
+    def _compute_column_stats(self, col_data: pd.Series, col_name: str,
+                              confidence_level: float = 0.95) -> Dict[str, Any]:
+        """
+        Compute statistics for a single column (parallelizable).
+
+        Args:
+            col_data: Column data
+            col_name: Column name
+            confidence_level: Confidence level for intervals
+
+        Returns:
+            Dictionary containing statistics for the column
+        """
+        col_data_clean = col_data.dropna()
+
+        if len(col_data_clean) == 0:
+            return {
+                "message": "All values are missing",
+                "count": 0,
+                "missing": len(col_data)
+            }
+
+        # Central tendency
+        mean_val = float(col_data_clean.mean())
+        median_val = float(col_data_clean.median())
+        mode_result = col_data_clean.mode()
+        mode_val = float(mode_result.iloc[0]) if len(mode_result) > 0 else None
+
+        # Dispersion
+        std_val = float(col_data_clean.std())
+        var_val = float(col_data_clean.var())
+        range_val = float(col_data_clean.max() - col_data_clean.min())
+        iqr_val = float(col_data_clean.quantile(0.75) - col_data_clean.quantile(0.25))
+        mad_val = float(np.median(np.abs(col_data_clean - col_data_clean.median())))
+
+        # Percentiles
+        percentiles = {
+            "min": float(col_data_clean.min()),
+            "p5": float(col_data_clean.quantile(0.05)),
+            "p10": float(col_data_clean.quantile(0.10)),
+            "Q1": float(col_data_clean.quantile(0.25)),
+            "median": median_val,
+            "Q3": float(col_data_clean.quantile(0.75)),
+            "p90": float(col_data_clean.quantile(0.90)),
+            "p95": float(col_data_clean.quantile(0.95)),
+            "max": float(col_data_clean.max())
+        }
+
+        # Shape
+        skewness = float(col_data_clean.skew())
+        kurtosis = float(col_data_clean.kurtosis())
+
+        # Coefficient of variation (CV)
+        cv = (std_val / mean_val * 100) if mean_val != 0 else np.inf
+
+        # Confidence interval for mean
+        if len(col_data_clean) > 1:
+            ci = stats.t.interval(
+                confidence_level,
+                len(col_data_clean) - 1,
+                loc=mean_val,
+                scale=stats.sem(col_data_clean)
+            )
+            confidence_interval = {
+                "lower": float(ci[0]),
+                "upper": float(ci[1]),
+                "level": confidence_level
+            }
+        else:
+            confidence_interval = None
+
+        return {
+            "count": len(col_data_clean),
+            "missing": int(col_data.isna().sum()),
+            "central_tendency": {
+                "mean": mean_val,
+                "median": median_val,
+                "mode": mode_val
+            },
+            "dispersion": {
+                "std": std_val,
+                "variance": var_val,
+                "range": range_val,
+                "iqr": iqr_val,
+                "mad": mad_val,
+                "cv": float(cv) if not np.isinf(cv) else None
+            },
+            "percentiles": percentiles,
+            "shape": {
+                "skewness": skewness,
+                "kurtosis": kurtosis,
+                "skewness_interpretation": self._interpret_skewness(skewness),
+                "kurtosis_interpretation": self._interpret_kurtosis(kurtosis)
+            },
+            "confidence_interval_mean": confidence_interval
         }
 
     def _analyze_distributions(self, data: pd.DataFrame) -> Dict[str, Any]:

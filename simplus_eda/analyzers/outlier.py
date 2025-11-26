@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Any, Literal, List, Optional
 from scipy import stats
+from ..utils.parallel import ParallelProcessor
 
 
 class OutlierAnalyzer:
@@ -17,6 +18,8 @@ class OutlierAnalyzer:
     - Z-score: Statistical method based on standard deviations
     - Isolation Forest: Machine learning-based anomaly detection
     - Modified Z-score: Robust alternative using median absolute deviation
+
+    Supports parallel processing for analyzing multiple columns simultaneously.
     """
 
     def __init__(
@@ -24,7 +27,9 @@ class OutlierAnalyzer:
         method: Literal["iqr", "zscore", "isolation_forest", "modified_zscore", "all"] = "iqr",
         iqr_multiplier: float = 1.5,
         zscore_threshold: float = 3.0,
-        contamination: float = 0.1
+        contamination: float = 0.1,
+        n_jobs: int = 1,
+        verbose: bool = False
     ):
         """
         Initialize OutlierAnalyzer.
@@ -34,11 +39,16 @@ class OutlierAnalyzer:
             iqr_multiplier: Multiplier for IQR method (default 1.5)
             zscore_threshold: Threshold for z-score method (default 3.0)
             contamination: Expected proportion of outliers for Isolation Forest (default 0.1)
+            n_jobs: Number of parallel jobs (-1 for all CPUs, default 1)
+            verbose: Enable verbose output (default False)
         """
         self.method = method
         self.iqr_multiplier = iqr_multiplier
         self.zscore_threshold = zscore_threshold
         self.contamination = contamination
+        self.n_jobs = n_jobs
+        self.verbose = verbose
+        self.parallel_processor = ParallelProcessor(n_jobs=n_jobs, verbose=verbose)
 
     def analyze(self, data: pd.DataFrame) -> Dict[str, Any]:
         """
