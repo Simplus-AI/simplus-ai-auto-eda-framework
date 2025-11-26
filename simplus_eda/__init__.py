@@ -31,9 +31,21 @@ from simplus_eda.core.eda import (
 )
 
 # Import core components (for advanced users)
-from simplus_eda.core.config import EDAConfig, ConfigurationError
+from simplus_eda.core.config import EDAConfig
 from simplus_eda.core.analyzer import EDAAnalyzer
 from simplus_eda.core.report import ReportGenerator
+
+# Import exceptions
+from simplus_eda.exceptions import (
+    SimplusEDAError,
+    ConfigurationError,
+    DataError,
+    AnalysisError,
+    ReportGenerationError
+)
+
+# Import logging
+from simplus_eda.logging_config import get_logger, configure_logging
 
 __all__ = [
     # Unified API (recommended)
@@ -43,9 +55,19 @@ __all__ = [
 
     # Configuration
     "EDAConfig",
-    "ConfigurationError",
 
     # Core components (advanced usage)
     "EDAAnalyzer",
     "ReportGenerator",
+
+    # Exceptions
+    "SimplusEDAError",
+    "ConfigurationError",
+    "DataError",
+    "AnalysisError",
+    "ReportGenerationError",
+
+    # Logging
+    "get_logger",
+    "configure_logging",
 ]

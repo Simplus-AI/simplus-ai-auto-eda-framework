@@ -6,11 +6,7 @@ from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
-
-
-class ConfigurationError(Exception):
-    """Exception raised for configuration errors."""
-    pass
+from simplus_eda.exceptions import ConfigurationError, InvalidConfigurationError
 
 
 @dataclass
@@ -114,62 +110,91 @@ class EDAConfig:
         """
         # Validate thresholds (0-1)
         if not 0 <= self.correlation_threshold <= 1:
-            raise ConfigurationError(
-                f"correlation_threshold must be between 0 and 1, got {self.correlation_threshold}"
+            raise InvalidConfigurationError(
+                "correlation_threshold must be between 0 and 1",
+                parameter="correlation_threshold",
+                value=self.correlation_threshold,
+                valid_values=["0.0 to 1.0"]
             )
 
         if not 0 <= self.missing_threshold <= 1:
-            raise ConfigurationError(
-                f"missing_threshold must be between 0 and 1, got {self.missing_threshold}"
+            raise InvalidConfigurationError(
+                "missing_threshold must be between 0 and 1",
+                parameter="missing_threshold",
+                value=self.missing_threshold,
+                valid_values=["0.0 to 1.0"]
             )
 
         if not 0 < self.significance_level < 1:
-            raise ConfigurationError(
-                f"significance_level must be between 0 and 1, got {self.significance_level}"
+            raise InvalidConfigurationError(
+                "significance_level must be between 0 and 1",
+                parameter="significance_level",
+                value=self.significance_level,
+                valid_values=["0.0 to 1.0 (exclusive)"]
             )
 
         if not 0 < self.outlier_contamination <= 0.5:
-            raise ConfigurationError(
-                f"outlier_contamination must be between 0 and 0.5, got {self.outlier_contamination}"
+            raise InvalidConfigurationError(
+                "outlier_contamination must be between 0 and 0.5",
+                parameter="outlier_contamination",
+                value=self.outlier_contamination,
+                valid_values=["0.0 to 0.5"]
             )
 
         # Validate methods
         if self.outlier_method not in self.VALID_OUTLIER_METHODS:
-            raise ConfigurationError(
-                f"outlier_method must be one of {self.VALID_OUTLIER_METHODS}, got '{self.outlier_method}'"
+            raise InvalidConfigurationError(
+                "Invalid outlier detection method",
+                parameter="outlier_method",
+                value=self.outlier_method,
+                valid_values=self.VALID_OUTLIER_METHODS
             )
 
         if self.distribution_test_method not in self.VALID_DISTRIBUTION_TESTS:
-            raise ConfigurationError(
-                f"distribution_test_method must be one of {self.VALID_DISTRIBUTION_TESTS}, "
-                f"got '{self.distribution_test_method}'"
+            raise InvalidConfigurationError(
+                "Invalid distribution test method",
+                parameter="distribution_test_method",
+                value=self.distribution_test_method,
+                valid_values=self.VALID_DISTRIBUTION_TESTS
             )
 
         if self.output_format not in self.VALID_OUTPUT_FORMATS:
-            raise ConfigurationError(
-                f"output_format must be one of {self.VALID_OUTPUT_FORMATS}, got '{self.output_format}'"
+            raise InvalidConfigurationError(
+                "Invalid output format",
+                parameter="output_format",
+                value=self.output_format,
+                valid_values=self.VALID_OUTPUT_FORMATS
             )
 
         # Validate positive integers
         if self.n_samples_viz <= 0:
-            raise ConfigurationError(
-                f"n_samples_viz must be positive, got {self.n_samples_viz}"
+            raise InvalidConfigurationError(
+                "n_samples_viz must be positive",
+                parameter="n_samples_viz",
+                value=self.n_samples_viz
             )
 
         if self.max_categories <= 0:
-            raise ConfigurationError(
-                f"max_categories must be positive, got {self.max_categories}"
+            raise InvalidConfigurationError(
+                "max_categories must be positive",
+                parameter="max_categories",
+                value=self.max_categories
             )
 
         if self.min_cardinality <= 0:
-            raise ConfigurationError(
-                f"min_cardinality must be positive, got {self.min_cardinality}"
+            raise InvalidConfigurationError(
+                "min_cardinality must be positive",
+                parameter="min_cardinality",
+                value=self.min_cardinality
             )
 
         # Validate n_jobs
         if self.n_jobs < -1 or self.n_jobs == 0:
-            raise ConfigurationError(
-                f"n_jobs must be -1 or positive, got {self.n_jobs}"
+            raise InvalidConfigurationError(
+                "n_jobs must be -1 or a positive integer",
+                parameter="n_jobs",
+                value=self.n_jobs,
+                valid_values=["-1 (all CPUs)", "1, 2, 3, ... (specific number)"]
             )
 
     def to_dict(self) -> Dict[str, Any]:
