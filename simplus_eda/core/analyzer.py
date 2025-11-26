@@ -47,11 +47,22 @@ class EDAAnalyzer:
         self.data = None
         self.results = {}
 
-        # Initialize specialized analyzers
-        self._statistical_analyzer = StatisticalAnalyzer()
+        # Initialize specialized analyzers with parallel processing support
+        self._statistical_analyzer = StatisticalAnalyzer(
+            n_jobs=self.config.n_jobs,
+            verbose=self.config.verbose
+        )
         self._quality_analyzer = DataQualityAnalyzer()
-        self._correlation_analyzer = CorrelationAnalyzer()
-        self._outlier_analyzer = OutlierAnalyzer()
+        self._correlation_analyzer = CorrelationAnalyzer(
+            n_jobs=self.config.n_jobs,
+            verbose=self.config.verbose
+        )
+        self._outlier_analyzer = OutlierAnalyzer(
+            method=self.config.outlier_method,
+            contamination=self.config.outlier_contamination,
+            n_jobs=self.config.n_jobs,
+            verbose=self.config.verbose
+        )
 
     def analyze(self, data: pd.DataFrame, quick: bool = False) -> Dict[str, Any]:
         """
