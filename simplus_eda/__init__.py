@@ -47,6 +47,14 @@ from simplus_eda.exceptions import (
 # Import logging
 from simplus_eda.logging_config import get_logger, configure_logging
 
+# Import backends (optional)
+try:
+    from simplus_eda.backends.dask_backend import DaskBackend
+    _DASK_BACKEND_AVAILABLE = True
+except ImportError:
+    _DASK_BACKEND_AVAILABLE = False
+    DaskBackend = None
+
 __all__ = [
     # Unified API (recommended)
     "SimplusEDA",
@@ -70,4 +78,7 @@ __all__ = [
     # Logging
     "get_logger",
     "configure_logging",
+
+    # Backends (optional)
+    "DaskBackend",
 ]
