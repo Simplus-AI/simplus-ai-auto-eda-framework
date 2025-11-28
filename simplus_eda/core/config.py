@@ -34,6 +34,16 @@ class EDAConfig:
         min_cardinality: Minimum unique values for high cardinality warning (default: 100)
         distribution_test_method: Method for distribution testing (default: 'shapiro')
             Options: 'shapiro', 'ks', 'anderson'
+        enable_auto_sampling: Whether to automatically sample large datasets (default: True)
+        auto_sample_threshold: Row count threshold for auto-sampling (default: 100000)
+        sampling_method: Method for data sampling (default: 'adaptive')
+            Options: 'random', 'stratified', 'reservoir', 'systematic', 'adaptive'
+        enable_dask: Whether to use Dask for out-of-core computation (default: False)
+        dask_threshold: Row count threshold for switching to Dask (default: 1000000)
+        dask_npartitions: Number of Dask partitions (None = auto, default: None)
+        chunk_size: Chunk size for streaming processing (None = auto, default: None)
+        optimize_memory: Whether to optimize DataFrame memory usage (default: True)
+        memory_check_enabled: Whether to check available memory before operations (default: True)
         save_results: Whether to save analysis results to file (default: False)
         output_dir: Directory for saving results (default: './eda_results')
         output_format: Format for saving results (default: 'json')
@@ -72,6 +82,17 @@ class EDAConfig:
     max_categories: int = 50
     min_cardinality: int = 100
 
+    # Large dataset settings
+    enable_auto_sampling: bool = True
+    auto_sample_threshold: int = 100000  # Auto-sample if rows > threshold
+    sampling_method: str = "adaptive"
+    enable_dask: bool = False
+    dask_threshold: int = 1000000  # Use Dask if rows > threshold
+    dask_npartitions: Optional[int] = None  # Auto-determine if None
+    chunk_size: Optional[int] = None  # Auto-determine if None (for chunked processing)
+    optimize_memory: bool = True
+    memory_check_enabled: bool = True
+
     # Output settings
     save_results: bool = False
     output_dir: str = "./eda_results"
@@ -93,6 +114,11 @@ class EDAConfig:
     )
     VALID_OUTPUT_FORMATS: List[str] = field(
         default_factory=lambda: ["json", "pickle", "html"],
+        init=False,
+        repr=False
+    )
+    VALID_SAMPLING_METHODS: List[str] = field(
+        default_factory=lambda: ["random", "stratified", "reservoir", "systematic", "adaptive"],
         init=False,
         repr=False
     )
@@ -197,6 +223,44 @@ class EDAConfig:
                 valid_values=["-1 (all CPUs)", "1, 2, 3, ... (specific number)"]
             )
 
+        # Validate sampling method
+        if self.sampling_method not in self.VALID_SAMPLING_METHODS:
+            raise InvalidConfigurationError(
+                "Invalid sampling method",
+                parameter="sampling_method",
+                value=self.sampling_method,
+                valid_values=self.VALID_SAMPLING_METHODS
+            )
+
+        # Validate large dataset thresholds
+        if self.auto_sample_threshold <= 0:
+            raise InvalidConfigurationError(
+                "auto_sample_threshold must be positive",
+                parameter="auto_sample_threshold",
+                value=self.auto_sample_threshold
+            )
+
+        if self.dask_threshold <= 0:
+            raise InvalidConfigurationError(
+                "dask_threshold must be positive",
+                parameter="dask_threshold",
+                value=self.dask_threshold
+            )
+
+        if self.dask_npartitions is not None and self.dask_npartitions <= 0:
+            raise InvalidConfigurationError(
+                "dask_npartitions must be positive or None",
+                parameter="dask_npartitions",
+                value=self.dask_npartitions
+            )
+
+        if self.chunk_size is not None and self.chunk_size <= 0:
+            raise InvalidConfigurationError(
+                "chunk_size must be positive or None",
+                parameter="chunk_size",
+                value=self.chunk_size
+            )
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert configuration to dictionary.
@@ -224,6 +288,15 @@ class EDAConfig:
             "n_samples_viz": self.n_samples_viz,
             "max_categories": self.max_categories,
             "min_cardinality": self.min_cardinality,
+            "enable_auto_sampling": self.enable_auto_sampling,
+            "auto_sample_threshold": self.auto_sample_threshold,
+            "sampling_method": self.sampling_method,
+            "enable_dask": self.enable_dask,
+            "dask_threshold": self.dask_threshold,
+            "dask_npartitions": self.dask_npartitions,
+            "chunk_size": self.chunk_size,
+            "optimize_memory": self.optimize_memory,
+            "memory_check_enabled": self.memory_check_enabled,
             "save_results": self.save_results,
             "output_dir": self.output_dir,
             "output_format": self.output_format,
@@ -355,6 +428,7 @@ class EDAConfig:
             f"  Statistical Tests: {'Enabled' if self.enable_statistical_tests else 'Disabled'}",
             f"  Visualizations: {'Enabled' if self.enable_visualizations else 'Disabled'}",
             f"  Verbose Output: {'Enabled' if self.verbose else 'Disabled'}",
+            f"  Parallel Jobs: {self.n_jobs if self.n_jobs > 0 else 'All CPUs'}",
             "",
             "Thresholds:",
             f"  Correlation Threshold: {self.correlation_threshold}",
@@ -369,6 +443,15 @@ class EDAConfig:
             f"  Max Visualization Samples: {self.n_samples_viz:,}",
             f"  Max Categorical Values: {self.max_categories}",
             f"  Random State: {self.random_state}",
+            "",
+            "Large Dataset Settings:",
+            f"  Auto Sampling: {'Enabled' if self.enable_auto_sampling else 'Disabled'}",
+            f"  Auto Sample Threshold: {self.auto_sample_threshold:,} rows",
+            f"  Sampling Method: {self.sampling_method}",
+            f"  Dask Backend: {'Enabled' if self.enable_dask else 'Disabled'}",
+            f"  Dask Threshold: {self.dask_threshold:,} rows",
+            f"  Memory Optimization: {'Enabled' if self.optimize_memory else 'Disabled'}",
+            f"  Memory Check: {'Enabled' if self.memory_check_enabled else 'Disabled'}",
         ]
 
         if self.save_results:
@@ -433,5 +516,29 @@ class EDAConfig:
             missing_threshold=0.05,
             outlier_method="isolation_forest",
             n_samples_viz=50000,
+            verbose=True,
+        )
+
+    @staticmethod
+    def get_large_dataset() -> "EDAConfig":
+        """
+        Get configuration optimized for large datasets.
+
+        Returns:
+            EDAConfig with settings for memory-efficient large dataset analysis
+
+        Example:
+            >>> config = EDAConfig.get_large_dataset()
+            >>> analyzer = EDAAnalyzer(config=config)
+        """
+        return EDAConfig(
+            enable_auto_sampling=True,
+            auto_sample_threshold=50000,
+            sampling_method="adaptive",
+            enable_dask=False,  # User can enable if needed
+            optimize_memory=True,
+            memory_check_enabled=True,
+            n_samples_viz=5000,
+            n_jobs=-1,  # Use all CPUs
             verbose=True,
         )
