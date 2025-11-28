@@ -93,6 +93,19 @@ class EDAConfig:
     optimize_memory: bool = True
     memory_check_enabled: bool = True
 
+    # Caching settings
+    enable_cache: bool = True
+    cache_backend: str = "memory"  # 'memory' or 'disk'
+    cache_dir: str = "./.simplus_cache"
+    cache_max_size: int = 100  # Max entries for memory cache
+    cache_max_size_mb: Optional[float] = 500.0  # Max size for disk cache (MB)
+    cache_ttl: Optional[float] = None  # Time-to-live in seconds (None = no expiration)
+
+    # Progress tracking settings
+    enable_progress: bool = True
+    use_tqdm: bool = True  # Use tqdm progress bars
+    progress_callbacks: List[Any] = field(default_factory=list)  # Custom progress callbacks
+
     # Output settings
     save_results: bool = False
     output_dir: str = "./eda_results"
@@ -119,6 +132,11 @@ class EDAConfig:
     )
     VALID_SAMPLING_METHODS: List[str] = field(
         default_factory=lambda: ["random", "stratified", "reservoir", "systematic", "adaptive"],
+        init=False,
+        repr=False
+    )
+    VALID_CACHE_BACKENDS: List[str] = field(
+        default_factory=lambda: ["memory", "disk"],
         init=False,
         repr=False
     )
@@ -261,6 +279,37 @@ class EDAConfig:
                 value=self.chunk_size
             )
 
+        # Validate cache backend
+        if self.cache_backend not in self.VALID_CACHE_BACKENDS:
+            raise InvalidConfigurationError(
+                "Invalid cache backend",
+                parameter="cache_backend",
+                value=self.cache_backend,
+                valid_values=self.VALID_CACHE_BACKENDS
+            )
+
+        # Validate cache settings
+        if self.cache_max_size <= 0:
+            raise InvalidConfigurationError(
+                "cache_max_size must be positive",
+                parameter="cache_max_size",
+                value=self.cache_max_size
+            )
+
+        if self.cache_max_size_mb is not None and self.cache_max_size_mb <= 0:
+            raise InvalidConfigurationError(
+                "cache_max_size_mb must be positive or None",
+                parameter="cache_max_size_mb",
+                value=self.cache_max_size_mb
+            )
+
+        if self.cache_ttl is not None and self.cache_ttl <= 0:
+            raise InvalidConfigurationError(
+                "cache_ttl must be positive or None",
+                parameter="cache_ttl",
+                value=self.cache_ttl
+            )
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert configuration to dictionary.
@@ -297,6 +346,14 @@ class EDAConfig:
             "chunk_size": self.chunk_size,
             "optimize_memory": self.optimize_memory,
             "memory_check_enabled": self.memory_check_enabled,
+            "enable_cache": self.enable_cache,
+            "cache_backend": self.cache_backend,
+            "cache_dir": self.cache_dir,
+            "cache_max_size": self.cache_max_size,
+            "cache_max_size_mb": self.cache_max_size_mb,
+            "cache_ttl": self.cache_ttl,
+            "enable_progress": self.enable_progress,
+            "use_tqdm": self.use_tqdm,
             "save_results": self.save_results,
             "output_dir": self.output_dir,
             "output_format": self.output_format,
@@ -452,6 +509,16 @@ class EDAConfig:
             f"  Dask Threshold: {self.dask_threshold:,} rows",
             f"  Memory Optimization: {'Enabled' if self.optimize_memory else 'Disabled'}",
             f"  Memory Check: {'Enabled' if self.memory_check_enabled else 'Disabled'}",
+            "",
+            "Caching Settings:",
+            f"  Caching: {'Enabled' if self.enable_cache else 'Disabled'}",
+            f"  Cache Backend: {self.cache_backend}",
+            f"  Cache Max Size: {self.cache_max_size} entries" if self.cache_backend == 'memory' else f"  Cache Max Size: {self.cache_max_size_mb} MB",
+            f"  Cache TTL: {self.cache_ttl}s" if self.cache_ttl else "  Cache TTL: Never expires",
+            "",
+            "Progress Tracking:",
+            f"  Progress Indicators: {'Enabled' if self.enable_progress else 'Disabled'}",
+            f"  Progress Bars (tqdm): {'Enabled' if self.use_tqdm else 'Disabled'}",
         ]
 
         if self.save_results:

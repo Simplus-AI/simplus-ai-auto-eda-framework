@@ -47,6 +47,22 @@ from simplus_eda.exceptions import (
 # Import logging
 from simplus_eda.logging_config import get_logger, configure_logging
 
+# Import caching
+from simplus_eda.cache import (
+    ResultCache,
+    compute_dataframe_hash,
+    compute_cache_key,
+)
+
+# Import progress tracking
+from simplus_eda.progress import (
+    ProgressTracker,
+    ProgressCallback,
+    progress_bar,
+    progress_context,
+    TQDM_AVAILABLE,
+)
+
 # Import backends (optional)
 try:
     from simplus_eda.backends.dask_backend import DaskBackend
@@ -78,6 +94,18 @@ __all__ = [
     # Logging
     "get_logger",
     "configure_logging",
+
+    # Caching
+    "ResultCache",
+    "compute_dataframe_hash",
+    "compute_cache_key",
+
+    # Progress tracking
+    "ProgressTracker",
+    "ProgressCallback",
+    "progress_bar",
+    "progress_context",
+    "TQDM_AVAILABLE",
 
     # Backends (optional)
     "DaskBackend",
