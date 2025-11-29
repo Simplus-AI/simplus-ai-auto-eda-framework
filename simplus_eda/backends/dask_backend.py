@@ -13,7 +13,7 @@ Features:
 
 import pandas as pd
 import numpy as np
-from typing import Optional, Dict, Any, Union, List
+from typing import Optional, Dict, Any, Union, List, TYPE_CHECKING
 import warnings
 
 from simplus_eda.logging_config import get_logger
@@ -30,6 +30,16 @@ try:
 except ImportError:
     DASK_AVAILABLE = False
     dd = None
+
+    # Create dummy dd module for type hints when dask not available
+    if TYPE_CHECKING:
+        import dask.dataframe as dd
+    else:
+        # Create a placeholder for runtime
+        class _DummyDD:
+            DataFrame = type('DataFrame', (), {})
+            Series = type('Series', (), {})
+        dd = _DummyDD()
 
 
 def check_dask_available():

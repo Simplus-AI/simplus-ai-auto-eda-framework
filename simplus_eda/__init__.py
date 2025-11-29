@@ -63,6 +63,43 @@ from simplus_eda.progress import (
     TQDM_AVAILABLE,
 )
 
+# Import statistical tests
+from simplus_eda.analyzers.statistical_tests import (
+    StatisticalTestsManager,
+    ANOVATests,
+    PostHocTests,
+    NonParametricTests,
+    CategoricalTests,
+    VarianceTests,
+    GrangerCausalityTest,
+    EffectSize,
+)
+
+# Import time series analysis
+from simplus_eda.analyzers.timeseries import (
+    TimeSeriesAnalyzer,
+    TimeSeriesValidator,
+    StationarityTests,
+    TrendAnalyzer,
+    SeasonalityAnalyzer,
+    AutocorrelationAnalyzer,
+    TimeSeriesForecaster,
+    TimeSeriesComparator,
+)
+
+# Import feature engineering
+from simplus_eda.analyzers.feature_engineering import (
+    FeatureEngineeringManager,
+    InteractionDetector,
+    PolynomialDetector,
+    BinningRecommender,
+    EncodingRecommender,
+    ScalingRecommender,
+    ScalingMethod,
+    EncodingMethod,
+    BinningStrategy,
+)
+
 # Import backends (optional)
 try:
     from simplus_eda.backends.dask_backend import DaskBackend
@@ -106,6 +143,37 @@ __all__ = [
     "progress_bar",
     "progress_context",
     "TQDM_AVAILABLE",
+
+    # Statistical tests
+    "StatisticalTestsManager",
+    "ANOVATests",
+    "PostHocTests",
+    "NonParametricTests",
+    "CategoricalTests",
+    "VarianceTests",
+    "GrangerCausalityTest",
+    "EffectSize",
+
+    # Time series analysis
+    "TimeSeriesAnalyzer",
+    "TimeSeriesValidator",
+    "StationarityTests",
+    "TrendAnalyzer",
+    "SeasonalityAnalyzer",
+    "AutocorrelationAnalyzer",
+    "TimeSeriesForecaster",
+    "TimeSeriesComparator",
+
+    # Feature engineering
+    "FeatureEngineeringManager",
+    "InteractionDetector",
+    "PolynomialDetector",
+    "BinningRecommender",
+    "EncodingRecommender",
+    "ScalingRecommender",
+    "ScalingMethod",
+    "EncodingMethod",
+    "BinningStrategy",
 
     # Backends (optional)
     "DaskBackend",

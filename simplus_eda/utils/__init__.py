@@ -10,7 +10,6 @@ from simplus_eda.utils.sampling import (
     DataSampler,
     SamplingMethod,
     smart_sample,
-    estimate_sample_size,
 )
 from simplus_eda.utils.memory import (
     MemoryProfiler,
@@ -39,7 +38,6 @@ __all__ = [
     "DataSampler",
     "SamplingMethod",
     "smart_sample",
-    "estimate_sample_size",
     # Memory
     "MemoryProfiler",
     "get_system_memory_info",
