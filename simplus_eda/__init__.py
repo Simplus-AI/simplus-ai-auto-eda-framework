@@ -100,6 +100,17 @@ from simplus_eda.analyzers.feature_engineering import (
     BinningStrategy,
 )
 
+# Import anomaly detection
+from simplus_eda.analyzers.anomaly_detection import (
+    AnomalyDetectionManager,
+    UnivariateAnomalyDetector,
+    MultivariateAnomalyDetector,
+    ClusteringAnomalyDetector,
+    TimeSeriesAnomalyDetector,
+    AnomalyExplainer,
+    AnomalyMethod,
+)
+
 # Import backends (optional)
 try:
     from simplus_eda.backends.dask_backend import DaskBackend
@@ -174,6 +185,15 @@ __all__ = [
     "ScalingMethod",
     "EncodingMethod",
     "BinningStrategy",
+
+    # Anomaly detection
+    "AnomalyDetectionManager",
+    "UnivariateAnomalyDetector",
+    "MultivariateAnomalyDetector",
+    "ClusteringAnomalyDetector",
+    "TimeSeriesAnomalyDetector",
+    "AnomalyExplainer",
+    "AnomalyMethod",
 
     # Backends (optional)
     "DaskBackend",
