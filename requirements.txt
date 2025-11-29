@@ -9,7 +9,7 @@ plotly>=5.0.0
 
 # Statistical analysis
 scipy>=1.7.0
-statsmodels>=0.13.0
+statsmodels>=0.13.0  # For time series analysis (ARIMA, decomposition, ACF/PACF)
 
 # Machine learning (for outlier detection)
 scikit-learn>=0.24.0
@@ -27,6 +27,15 @@ tabulate>=0.8.0  # For DataFrame markdown formatting
 
 # CLI
 click>=8.0.0     # For command-line interface
+
+# Progress indicators
+tqdm>=4.60.0     # For progress bars
+
+# Memory profiling (optional)
+psutil>=5.8.0    # For memory tracking
+
+# Out-of-core computation (optional)
+dask[complete]>=2021.0.0  # For large dataset support
 
 # Development dependencies (optional)
 pytest>=7.0.0
