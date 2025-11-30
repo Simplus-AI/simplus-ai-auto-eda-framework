@@ -152,7 +152,7 @@ temp/
 reports/
 eda_reports/
 outputs/
-examples/
+
 .claude
 main.py
 hai_dev_docs
