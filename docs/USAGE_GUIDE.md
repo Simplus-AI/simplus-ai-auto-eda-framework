@@ -73,6 +73,19 @@ quick_analysis(df, 'report.html')
 
 That's it! This will analyze your data and generate a comprehensive HTML report.
 
+**Want to try it now?** Check out our [example scripts](../examples/) with realistic sample data generators:
+
+```bash
+# Run quick start examples with generated data
+python examples/01_quick_start_examples.py
+
+# See advanced features
+python examples/02_advanced_analysis_examples.py
+
+# Explore real-world use cases
+python examples/03_real_world_use_cases.py
+```
+
 ### Basic Workflow
 
 ```python
@@ -875,6 +888,77 @@ pip install dask[complete]
 # For PDF reports
 pip install weasyprint
 ```
+
+## Sample Data & Examples
+
+The framework includes realistic data generators and comprehensive examples to help you get started quickly.
+
+### Generate Sample Datasets
+
+```python
+from examples.data_generators import generate_all_datasets
+
+# Generate all sample datasets in one command
+generate_all_datasets('./sample_data')
+```
+
+This creates 7 realistic datasets:
+- **sales_data.csv** - E-commerce transactions with outliers and missing values
+- **customer_churn.csv** - Customer churn prediction dataset
+- **time_series_sales.csv** - Daily sales with trend and seasonality
+- **financial_data.csv** - Financial metrics with anomalies
+- **sensor_data.csv** - IoT sensor readings
+- **healthcare_data.csv** - Patient health records
+- **marketing_data.csv** - Campaign performance data
+
+### Try the Examples
+
+```bash
+# Quick start (one-liners, basic workflow)
+python examples/01_quick_start_examples.py
+
+# Advanced features (statistical tests, time series, anomaly detection)
+python examples/02_advanced_analysis_examples.py
+
+# Real-world scenarios (e-commerce, churn, healthcare, IoT, marketing)
+python examples/03_real_world_use_cases.py
+```
+
+Each example script:
+- ✅ Generates realistic sample data automatically
+- ✅ Demonstrates multiple use cases
+- ✅ Shows console output with insights
+- ✅ Creates HTML reports in `outputs/` folder
+- ✅ Includes detailed comments and explanations
+
+### Individual Data Generators
+
+```python
+from examples.data_generators import (
+    generate_sales_data,
+    generate_customer_churn_data,
+    generate_time_series_sales,
+    generate_financial_data,
+    generate_sensor_data,
+    generate_healthcare_data,
+    generate_marketing_data
+)
+
+# Generate specific dataset
+df = generate_sales_data(n_samples=1000, random_state=42)
+
+# Customize characteristics
+df = generate_customer_churn_data(n_samples=5000, random_state=123)
+```
+
+Each generator creates data with:
+- Realistic distributions and correlations
+- Missing values in appropriate columns
+- Outliers and anomalies
+- Categorical and numerical features
+- Data quality issues for testing
+
+See [examples/README.md](../examples/README.md) for detailed documentation.
 
 ## Next Steps
 
